@@ -60,9 +60,32 @@ for d in doi_list:
                 item['figures'] = response.xpath('//img[@alt="figure"]').extract()
                 yield item
 
+    elif bib_info['publisher'] == 'Springer Nature':
+        
+        doi_spr = bib_info.get('DOI')
+        full_url_spr = 'http://link.springer.com/article/{0}'.format(doi_spr)
+        print(full_url_spr)
+        response_spr = urlopen(full_url_spr)
+        content_spr = response_spr.read()
+        
+        class ArticleSpiderSpr(scrapy.Spider):
+            name = 'ArticleSpiderSpr'
+            allowed_domains = ["https://link.springer.com/journal/10450"]
+            start_urls = [full_url_spr]
+    
+            def parse(self, response):
+                item = ArticleItem()
+                item['title'] = response.xpath('//h1[@class="ArticleTitle"]/text()').extract()
+                item['authors'] = response.xpath('//span[@class="authors__name"]/text()').extract()
+                item['doi'] = response.xpath('//span[@id="doi-url"]/text()').extract()
+                item['abstract'] = response.xpath('//p[@class="Para"]/text()').extract
+                item['text'] = response.xpath('//div[@id="body"]').extract()
+                item['figures'] = response.xpath('//div[@class="MediaObject"]').extract()
+                yield item
+
     else:
         print('wrong publisher')	
 
 process = CrawlerProcess({'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'})
-process.crawl(ArticleSpider)
+process.crawl(ArticleSpiderSpr)
 process.start()
