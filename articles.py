@@ -86,6 +86,22 @@ for d in doi_list:
     else:
         print('wrong publisher')	
 
+#Runs both Spiders
 process = CrawlerProcess({'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'})
+process.crawl(ArticleSpider)
 process.crawl(ArticleSpiderSpr)
 process.start()
+
+#Pipeline for data scraped 
+class JsonWriterPipeline(object):
+
+    def open_spider(self, spider):
+        self.file = open('testarticles.jl', 'w')
+
+    def close_spider(self, spider):
+        self.file.close()
+
+    def process_item(self, item, spider):
+        line = json.dumps(dict(item)) + "\n"
+        self.file.write(line)
+        return item
