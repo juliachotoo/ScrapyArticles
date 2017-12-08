@@ -13,6 +13,7 @@ from scrapy.spiders import Spider
 
 #for the spiders
 from scrapy import Spider
+from scrapy.http import TextResponse #defines what response is in xpath
 
 #to run spider in Jupytuer notebook, have to restart the kernel each time to run it
 from scrapy.settings import Settings
@@ -21,10 +22,14 @@ from scrapy.crawler import CrawlerProcess
 #for pipeline
 import re
 
-#for Items
-from scrapy.item import Item, Field
-from scrapy.selector import Selector
-from scrapy.spiders import Spider
+#Defines the items Scrapy is looking for
+class ArticleItem(Item):
+    title = Field()
+    authors = Field()
+    doi = Field()
+    abstract = Field()
+    text = Field()
+    figures = Field()
 
 #Sort DOIs, under each if statement the corresponding spider for each publisher
 doi_list = ["10.1021/ja302991b", "10.1016/j.micromeso.2012.01.033", "10.1007/s10450-012-9423-1", "10.1002/aic.690470520", "10.1007/s10450-013-9527-2"]
@@ -49,10 +54,10 @@ for d in doi_list:
                 item = ArticleItem()
                 item['title'] = response.xpath('//span[@class="hlFld-Title"]/text()').extract()
                 item['authors'] = response.xpath('//a[@id="authors"]/text()').extract()
-                items['doi'] = response.xpath('//div[@id="doi"]/text()').extract()
-                items['abstract'] = response.xpath('//p[@class="articleBody_abstractText"]/text()').extract()
-                items['text'] = response.xpath('//div[@class="hlFld-Fulltext"]/descendant::text()').extract()
-                items['figures'] = reponse.xpath('//img[@alt="figure"]').extract()
+                item['doi'] = response.xpath('//div[@id="doi"]/text()').extract()
+                item['abstract'] = response.xpath('//p[@class="articleBody_abstractText"]/text()').extract()
+                item['text'] = response.xpath('//div[@class="hlFld-Fulltext"]/descendant::text()').extract()
+                item['figures'] = response.xpath('//img[@alt="figure"]').extract()
                 yield item
 
     else:
