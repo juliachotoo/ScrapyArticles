@@ -31,6 +31,20 @@ class ArticleItem(Item):
     text = Field()
     figures = Field()
 
+#Pipeline for data scraped
+class JsonWriterPipeline(object):
+
+    def open_spider(self, spider):
+        self.file = open('testarticles.jl', 'w')
+
+    def close_spider(self, spider):
+        self.file.close()
+
+    def process_item(self, item, spider):
+        line = json.dumps(dict(item)) + "\n"
+        self.file.write(line)
+        return item
+
 #Sort DOIs, under each if statement the corresponding spider for each publisher
 doi_list = ["10.1021/ja302991b", "10.1016/j.micromeso.2012.01.033", "10.1007/s10450-012-9423-1", "10.1002/aic.690470520", "10.1007/s10450-013-9527-2"]
 for d in doi_list:
@@ -50,6 +64,13 @@ for d in doi_list:
             allowed_domains = ["http://pubs.acs.org/"]
             start_urls = [full_url_acs]
             
+            custom_settings = {
+                'LOG_LEVEL': logging.WARNING,
+                'ITEM_PIPELINES': {'__main__.JsonWriterPipeline': 1}, # Used for pipeline 1
+                'FEED_FORMAT':'json',                                 # Used for pipeline 2
+                'FEED_URI': 'testarticles.json'
+            }
+            
             def parse(self, response):
                 item = ArticleItem()
                 item['title'] = response.xpath('//span[@class="hlFld-Title"]/text()').extract()
@@ -64,7 +85,6 @@ for d in doi_list:
         
         doi_spr = bib_info.get('DOI')
         full_url_spr = 'http://link.springer.com/article/{0}'.format(doi_spr)
-        print(full_url_spr)
         response_spr = urlopen(full_url_spr)
         content_spr = response_spr.read()
         
@@ -92,16 +112,5 @@ process.crawl(ArticleSpider)
 process.crawl(ArticleSpiderSpr)
 process.start()
 
-#Pipeline for data scraped 
-class JsonWriterPipeline(object):
-
-    def open_spider(self, spider):
-        self.file = open('testarticles.jl', 'w')
-
-    def close_spider(self, spider):
-        self.file.close()
-
-    def process_item(self, item, spider):
-        line = json.dumps(dict(item)) + "\n"
-        self.file.write(line)
-        return item
+result = json.load(open('testarticles.jl', mode = 'r'))
+print(result['authors'])
