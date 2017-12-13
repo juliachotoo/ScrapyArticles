@@ -131,7 +131,7 @@ class ArticleSpiderSpr(scrapy.Spider):
         item['title'] = response.xpath('//h1[@class="ArticleTitle"]/text()').extract()
         item['authors'] = response.xpath('//span[@class="authors__name"]/text()').extract()
         item['doi'] = response.xpath('//span[@id="doi-url"]/text()').extract()
-        item['abstract'] = response.xpath('//section[@class="Abstract"]/descendant::text()').extract
+ #       item['abstract'] = response.xpath('//section[@class="Abstract"]/descendant::text()').extract
         item['text'] = response.xpath('//div[@id="body"]/descendant::text()').extract()
         item['figures'] = response.xpath('//div[@class="MediaObject"]').extract()
         yield item
@@ -151,8 +151,11 @@ def concatenate_list(input):
 
 resultACS = json.load(open('testarticles.jl',mode='r'))
 resultACS['abstract'] = concatenate_list(resultACS['abstract'])
+resultACS['text'] = concatenate_list(resultACS['text'])
 print(resultACS['abstract'])
 print(resultACS['authors'])
 
 resultSpr = json.load(open('testarticlesSpr.jl', mode='r'))
 print(resultSpr['title'])
+resultSpr['text'] = concatenate_list(resultSpr['text'])
+print(resultSpr['text'])
