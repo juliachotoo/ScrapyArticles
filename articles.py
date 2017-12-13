@@ -15,8 +15,6 @@ from scrapy.spiders import Spider
 from scrapy import Spider
 from scrapy.http import TextResponse #defines what response is in xpath
 
-from scrapy.utils.markup import remove_tags #to remove html tags
-
 #to run spider in Jupytuer notebook, have to restart the kernel each time to run it
 from scrapy.settings import Settings
 from scrapy.crawler import CrawlerProcess
@@ -31,13 +29,7 @@ class ArticleItem(Item):
     doi = Field()
     abstract = Field()
     text = Field()
-    figures = Field()
-
-#Pipeline to remove tags and extra letters in text and authors respectively
-#class TagPipeline(object):
-#    def process_item(self, item, spider):
-#        item['abstract'] = concatenate_list(item['abstract'])    
-#        return item['abstract']
+    figures = Field()    
 
 #Pipeline to turn data into JSON file for ACS
 class JsonWriterPipeline(object):
@@ -72,9 +64,13 @@ full_url_acs = ''
 full_url_spr = ''
 
 #Sort DOIs, under each if statement the corresponding spider for each publisher
-doi_list = ["10.1021/ja302991b", "10.1016/j.micromeso.2012.01.033", "10.1007/s10450-012-9423-1", "10.1002/aic.690470520", "10.1007/s10450-013-9527-2"]
-#doi_list = [ "10.1007/s10450-012-9423-1" ]
-#doi_list = ["10.1021/ja302991b"]
+dois = open('doi_list.txt')
+doi_list = dois.readlines()
+fixed_doi = []
+for x in doi_list:
+    fixed_doi.append(re.sub('\n','', x))
+doi_list = fixed_doi
+
 for d in doi_list:
     test_url = 'http://dx.doi.org/{0}'.format(d)
     
@@ -131,7 +127,7 @@ class ArticleSpiderSpr(scrapy.Spider):
         item['title'] = response.xpath('//h1[@class="ArticleTitle"]/text()').extract()
         item['authors'] = response.xpath('//span[@class="authors__name"]/text()').extract()
         item['doi'] = response.xpath('//span[@id="doi-url"]/text()').extract()
- #       item['abstract'] = response.xpath('//section[@class="Abstract"]/descendant::text()').extract
+#        item['abstract'] = response.xpath('//section[@class="Abstract", @id="Abs1", @tabindex="-1", @lang="en"]/descendant::text()').extract
         item['text'] = response.xpath('//div[@id="body"]/descendant::text()').extract()
         item['figures'] = response.xpath('//div[@class="MediaObject"]').extract()
         yield item
@@ -157,6 +153,7 @@ resultACS['text'] = concatenate_list(resultACS['text'])
 with open('testarticles.jl', 'w') as jsonFile:
     json.dump(resultACS, jsonFile)
 
+
 resultSpr = json.load(open('testarticlesSpr.jl', mode='r'))
 resultSpr['text'] = concatenate_list(resultSpr['text'])
 
@@ -166,9 +163,3 @@ for x in resultSpr['authors']:
 resultSpr['authors'] = fixed_authors
 with open('testarticlesSpr.jl', 'w') as jsonFile:
     json.dump(resultSpr, jsonFile)
-
-
-finalSpr = json.load(open('testarticlesSpr.jl', mode='r'))
-print(finalSpr['text'])
-print(finalSpr['authors'])
-print(finalSpr['doi'])
