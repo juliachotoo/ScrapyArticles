@@ -149,13 +149,26 @@ def concatenate_list(input):
         output = output+item
     return output
 
+#Opens data scraped into many lists, edits file to concatenate lists
 resultACS = json.load(open('testarticles.jl',mode='r'))
 resultACS['abstract'] = concatenate_list(resultACS['abstract'])
 resultACS['text'] = concatenate_list(resultACS['text'])
-print(resultACS['abstract'])
-print(resultACS['authors'])
+
+with open('testarticles.jl', 'w') as jsonFile:
+    json.dump(resultACS, jsonFile)
 
 resultSpr = json.load(open('testarticlesSpr.jl', mode='r'))
-print(resultSpr['title'])
 resultSpr['text'] = concatenate_list(resultSpr['text'])
-print(resultSpr['text'])
+
+fixed_authors = []
+for x in resultSpr['authors']:
+    fixed_authors.append(re.sub('\xa0', ' ', x))
+resultSpr['authors'] = fixed_authors
+with open('testarticlesSpr.jl', 'w') as jsonFile:
+    json.dump(resultSpr, jsonFile)
+
+
+finalSpr = json.load(open('testarticlesSpr.jl', mode='r'))
+print(finalSpr['text'])
+print(finalSpr['authors'])
+print(finalSpr['doi'])
