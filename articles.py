@@ -22,46 +22,11 @@ from scrapy.crawler import CrawlerProcess
 #for pipeline
 import re
 
-#Defines the items Scrapy is looking for
-class ArticleItem(Item):
-    title = Field()
-    authors = Field()
-    doi = Field()
-    abstract = Field()
-    text = Field()
-    figures = Field()    
-
-#Pipeline to turn data into JSON file for ACS
-class JsonWriterPipeline(object):
-
-    def open_spider(self, spider):
-        self.file = open('testarticles.jl', 'w')
-
-    def close_spider(self, spider):
-        self.file.close()
-
-    def process_item(self, item, spider):
-        line = json.dumps(dict(item)) + "\n"
-        self.file.write(line)
-        return item
-
-#Pipeline for Springer
-class JsonWriterPipelineSpr(object):
-
-    def open_spider(self, spider):
-        self.file = open('testarticlesSpr.jl', 'w')
-
-    def close_spider(self, spider):
-        self.file.close()
-
-    def process_item(self, item, spider):
-        line = json.dumps(dict(item)) + "\n"
-        self.file.write(line)
-        return item
-
-#Defining variable for spiders
+#Defining variable for spiders and pipeline
 full_url_acs = ''
 full_url_spr = ''
+doi_acs = ''
+doi_spr = ''
 
 #Sort DOIs, under each if statement the corresponding spider for each publisher
 dois = open('doi_list.txt')
@@ -91,7 +56,66 @@ for d in doi_list:
         content_spr = response_spr.read()
 
     else:
-        print('wrong publisher')	
+        print('wrong publisher')
+
+#New names for each file ACS
+    doiacs_name = re.sub('/', '', doi_acs)
+    nameacs = 'doiacs-%s.jl' %(doiacs_name)
+
+#New names for each file ACS
+    doispr_name = re.sub('/', '', doi_spr)
+    namespr = 'doispr-' + doispr_name + '.jl'
+
+#Pipeline to turn data into JSON file for ACS
+    class JsonWriterPipeline(object):
+
+        def open_spider(self, spider):
+            self.file = open(nameacs, 'w')
+
+        def close_spider(self, spider):
+            self.file.close()
+
+        def process_item(self, item, spider):
+            line = json.dumps(dict(item)) + "\n"
+            self.file.write(line)
+            return item
+
+#Pipeline for Springer
+    class JsonWriterPipelineSpr(object):
+
+        def open_spider(self, spider):
+            self.file = open(namespr, 'w')
+
+        def close_spider(self, spider):
+            self.file.close()
+
+        def process_item(self, item, spider):
+            line = json.dumps(dict(item)) + "\n"
+            self.file.write(line)
+            return item
+
+#Defines the items Scrapy is looking for
+class ArticleItem(Item):
+    title = Field()
+    authors = Field()
+    doi = Field()
+    abstract = Field()
+    text = Field()
+    figures = Field()    
+
+#Pipeline for Springer
+class JsonWriterPipelineSpr(object):
+
+    def open_spider(self, spider):
+        self.file = open(namespr, 'w')
+
+    def close_spider(self, spider):
+        self.file.close()
+
+    def process_item(self, item, spider):
+        line = json.dumps(dict(item)) + "\n"
+        self.file.write(line)
+        return item	
 
 #Code for Spiders
 class ArticleSpider(scrapy.Spider):
@@ -131,7 +155,7 @@ class ArticleSpiderSpr(scrapy.Spider):
         item['text'] = response.xpath('//div[@id="body"]/descendant::text()').extract()
         item['figures'] = response.xpath('//div[@class="MediaObject"]').extract()
         yield item
-                
+
 #Runs both Spiders
 process = CrawlerProcess({'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'})
 process.crawl(ArticleSpider)
@@ -146,20 +170,23 @@ def concatenate_list(input):
     return output
 
 #Opens data scraped into many lists, edits file to concatenate lists
-resultACS = json.load(open('testarticles.jl',mode='r'))
-resultACS['abstract'] = concatenate_list(resultACS['abstract'])
-resultACS['text'] = concatenate_list(resultACS['text'])
+#resultACS = json.load(open('testarticles.jl',mode='r'))
+#resultACS['abstract'] = concatenate_list(resultACS['abstract'])
+#resultACS['text'] = concatenate_list(resultACS['text'])
 
-with open('testarticles.jl', 'w') as jsonFile:
-    json.dump(resultACS, jsonFile)
+#with open('testarticles.jl', 'w') as jsonFile:
+#    json.dump(resultACS, jsonFile)
 
 
-resultSpr = json.load(open('testarticlesSpr.jl', mode='r'))
-resultSpr['text'] = concatenate_list(resultSpr['text'])
+#resultSpr = json.load(open('testarticlesSpr.jl', mode='r'))
+#resultSpr['text'] = concatenate_list(resultSpr['text'])
 
-fixed_authors = []
-for x in resultSpr['authors']:
-    fixed_authors.append(re.sub('\xa0', ' ', x))
-resultSpr['authors'] = fixed_authors
-with open('testarticlesSpr.jl', 'w') as jsonFile:
-    json.dump(resultSpr, jsonFile)
+#fixed_authors = []
+#for x in resultSpr['authors']:
+#    fixed_authors.append(re.sub('\xa0', ' ', x))
+#resultSpr['authors'] = fixed_authors
+#with open('testarticlesSpr.jl', 'w') as jsonFile:
+#    json.dump(resultSpr, jsonFile)
+
+print(doi_acs)
+print(nameacs)
