@@ -22,6 +22,12 @@ from scrapy.crawler import CrawlerProcess
 #for pipeline
 import re
 
+#Running spiders imports
+from twisted.internet import reactor
+from scrapy.utils.project import get_project_settings
+from scrapy.crawler import CrawlerRunner
+from scrapy.utils.log import configure_logging
+
 #Defines the items Scrapy is looking for
 class ArticleItem(Item):
     title = Field()
@@ -30,21 +36,39 @@ class ArticleItem(Item):
     abstract = Field()
     text = Field()
     figures = Field()
+
+#Pipeline to turn data into JSON file for ACS
+#class JsonWriterPipeline(object):
+#    def open_spider(self, spider):
+#        self.file = open('result.jl', 'w')
+        
+#    def close_spider(self, spider):
+#        self.file.close()
+
+#    def process_item(self, item, spider):
+#        line = json.dumps(dict(item)) + "\n"
+#        self.file.write(line)
+#        return item
+
+#Pipeline for Springer
+#class JsonWriterPipelineSpr(object):
+#    def open_spider(self, spider):
+#        self.file = open(namespr, 'w')
+
+#    def close_spider(self, spider):
+#        self.file.close()
+
+#    def process_item(self, item, spider):
+#        line = json.dumps(dict(item)) + "\n"
+#        self.file.write(line)
+#        return item
  
 #Defining variable for spiders and pipeline
 full_url_acs = ''
 full_url_spr = ''
-doi_acs = ''
-doi_spr = ''
-nameacs = ''
-namespr = ''
-doiacs_name = ''
-doispr_name = ''
-acs_lst = []
-spr_lst = []
 full_url_acs_lst = []
 full_url_spr_lst = []
-
+    
 #Sort DOIs, under each if statement the corresponding spider for each publisher
 dois = open('doi_list.txt')
 doi_lst = dois.readlines()
@@ -58,6 +82,7 @@ for d in doi_lst:
     
     headers = {'Accept': 'application/citeproc+json'}
     bib_info = json.loads(requests.get(test_url, headers=headers).content)
+
     if bib_info['publisher'] == 'American Chemical Society (ACS)':
         
         doi_acs = bib_info.get('DOI')
@@ -65,9 +90,13 @@ for d in doi_lst:
         response_acs = urlopen(full_url_acs)
         content_acs = response_acs.read()
 
-        acs_lst.append(doi_acs)
         full_url_acs_lst.append(full_url_acs)
+        
+        doiacs_name = re.sub('/', '', doi_acs)
+        nameacs = 'doiacs-%s.json' %(doiacs_name)
 
+        print(nameacs)
+        
     elif bib_info['publisher'] == 'Springer Nature':
         
         doi_spr = bib_info.get('DOI')
@@ -75,40 +104,42 @@ for d in doi_lst:
         response_spr = urlopen(full_url_spr)
         content_spr = response_spr.read()
 
-        spr_lst.append(doi_spr)
         full_url_spr_lst.append(full_url_spr)
+        
+        doispr_name = re.sub('/', '', doi_spr)
+        namespr = 'doispr-%s.json' %(doispr_name)
 
     else:
         print('wrong publisher')
 
 #Code for Spiders
 class ArticleSpider(scrapy.Spider):
-     name = 'ArticleSpider'
-     allowed_domains = ["http://pubs.acs.org/"]
-     start_urls = full_url_acs_lst
+    name = 'ArticleSpider'
+    allowed_domains = ["http://pubs.acs.org/"]
+    start_urls = full_url_acs_lst
+    
+ #   custom_settings = {
+ #       'ITEM_PIPELINES': {'__main__.JsonWriterPipeline': 2,}
+ #   }
             
-     custom_settings = {
-         'ITEM_PIPELINES': {'__main__.JsonWriterPipeline': 2,}
-     }
-            
-     def parse(self, response):
-         item = ArticleItem()
-         item['title'] = response.xpath('//span[@class="hlFld-Title"]/text()').extract()
-         item['authors'] = response.xpath('//a[@id="authors"]/text()').extract()
-         item['doi'] = response.xpath('//div[@id="doi"]/text()').extract()
-         item['abstract'] = response.xpath('//p[@class="articleBody_abstractText"]/text()').extract()
-         item['text'] = response.xpath('//div[@class="hlFld-Fulltext"]/descendant::text()').extract()
-         item['figures'] = response.xpath('//img[@alt="figure"]').extract()
-         yield item
+    def parse(self, response):
+        item = ArticleItem()
+        item['title'] = response.xpath('//span[@class="hlFld-Title"]/text()').extract()
+        item['authors'] = response.xpath('//a[@id="authors"]/text()').extract()
+        item['doi'] = response.xpath('//div[@id="doi"]/text()').extract()
+        item['abstract'] = response.xpath('//p[@class="articleBody_abstractText"]/text()').extract()
+        item['text'] = response.xpath('//div[@class="hlFld-Fulltext"]/descendant::text()').extract()
+        item['figures'] = response.xpath('//img[@alt="figure"]').extract()
+        yield item
 
 class ArticleSpiderSpr(scrapy.Spider):
     name = 'ArticleSpiderSpr'
     allowed_domains = ["https://link.springer.com"]
     start_urls = full_url_spr_lst
             
-    custom_settings = {
-        'ITEM_PIPELINES': {'__main__.JsonWriterPipelineSpr': 1,}
-    }
+#    custom_settings = {
+#        'ITEM_PIPELINES': {'__main__.JsonWriterPipelineSpr': 1,}
+#    }
 
     def parse(self, response):
         item = ArticleItem()
@@ -119,56 +150,30 @@ class ArticleSpiderSpr(scrapy.Spider):
         item['text'] = response.xpath('//div[@id="body"]/descendant::text()').extract()
         item['figures'] = response.xpath('//div[@class="MediaObject"]').extract()
         yield item
+    
+def run():
 
-#New names for each file ACS
-acs_final = []
-for y in acs_lst:
-    doiacs_name = re.sub('/', '', y)
-    nameacs = 'doiacs-%s.jl' %(doiacs_name)
-    acs_final.append(nameacs)
+    settings = get_project_settings()
+    settings.set('FEED_FORMAT', 'json')
+    settings.set('FEED_URI', 'result5.jl')
 
-#Pipeline to turn data into JSON file for ACS
-for y in acs_final:
-    class JsonWriterPipeline(object):
+    configure_logging()
+    runner = CrawlerRunner(settings)
+    runner.crawl(ArticleSpiderSpr, ArticleSpider)
 
-        def open_spider(self, spider):
-            self.file = open(y, 'w')
+    d = runner.join()
+    d.addBoth(lambda _: reactor.stop())
 
-        def close_spider(self, spider):
-            self.file.close()
+    reactor.run()  # the script will block here until all crawling jobs are finished
 
-        def process_item(self, item, spider):
-            line = json.dumps(dict(item)) + "\n"
-            self.file.write(line)
-            return item
-
-#New names for each file Springer
-spr_final = []
-for x in spr_lst:
-    doispr_name = re.sub('/', '', x)
-    namespr = 'doispr-%s.json' %(doispr_name)
-    spr_final.append(namespr)
-        
-#Pipeline for Springer
-for x in spr_final:
-    class JsonWriterPipelineSpr(object):
-
-        def open_spider(self, spider):
-            self.file = open(x, 'w')
-
-        def close_spider(self, spider):
-            self.file.close()
-
-        def process_item(self, item, spider):
-            line = json.dumps(dict(item)) + "\n"
-            self.file.write(line)
-            return item
-
+if __name__ == '__main__':
+    run()
+    
 #Runs both Spiders
-process = CrawlerProcess({'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'})
-process.crawl(ArticleSpider)
-process.crawl(ArticleSpiderSpr)
-process.start()
+#process = CrawlerProcess({'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'})
+#process.crawl(ArticleSpider)
+#process.crawl(ArticleSpiderSpr)
+#process.start()
 
 ##Opens data scraped into many lists, edits file to concatenate lists
 #def concatenate_list(input):
@@ -202,11 +207,3 @@ process.start()
 #Problem going back in to concatenate texts and remove tags
 #more than one file opening at a time doesn't work
 
-
-
-print(acs_lst)
-print(spr_lst)
-print(spr_final)
-print(acs_final)
-print(full_url_acs_lst)
-print(full_url_spr_lst)
