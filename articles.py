@@ -3,7 +3,6 @@ import scrapy
 from urllib.request import urlopen #to open the urls that the dois are put into
 import json
 import requests
-import pprint
 import logging
 
 #for the ArticleItem section
@@ -18,9 +17,6 @@ from scrapy.http import TextResponse #defines what response is in xpath
 #to run spider in Jupytuer notebook, have to restart the kernel each time to run it
 from scrapy.settings import Settings
 from scrapy.crawler import CrawlerProcess
-
-#for pipeline
-import re
 
 #Running spiders imports
 from twisted.internet import reactor
@@ -66,8 +62,7 @@ for d in doi_lst:
 
         full_url_acs_lst.append(full_url_acs)
         
-        doiacs_name = re.sub('/', '', doi_acs)
-        nameacs = 'doiacs-%s.json' %(doiacs_name)
+    
         
     elif bib_info['publisher'] == 'Springer Nature':
         
@@ -77,9 +72,6 @@ for d in doi_lst:
         content_spr = response_spr.read()
 
         full_url_spr_lst.append(full_url_spr)
-        
-        doispr_name = re.sub('/', '', doi_spr)
-        namespr = 'doispr-%s.json' %(doispr_name)
 
     else:
         print('wrong publisher')
